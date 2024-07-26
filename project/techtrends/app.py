@@ -4,7 +4,7 @@ from flask import Flask, jsonify, json, render_template, request, url_for, redir
 from werkzeug.exceptions import abort
 
 # Function to get a database connection.
-# This function connects to database with the name `database.db`
+# connects to database with the name `database.db`
 def get_db_connection():
     connection = sqlite3.connect('database.db')
     connection.row_factory = sqlite3.Row
@@ -15,13 +15,17 @@ def health_check():
     return jsonify({
         'status': 'OK - healthy' }), 200
 
-
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 #metrics
 def metrics():
     try:
-        post_count = Post.query.count()
-        db_connection_count = 1  # Example: Replace with actual logic to count database connections
+        connection = get_db_connection()
+        post_count = connection.execute('SELECT COUNT(*) FROM posts').fetchone()[0]
+        connection.close()
+        
+        db_connection_count = 1 
         response = {
             'db_connection_count': db_connection_count,
             'post_count': post_count
@@ -90,6 +94,18 @@ def create():
             return redirect(url_for('index'))
 
     return render_template('create.html')
+    
+#healthz
+@app.route('/healthz')
+def healthz():
+    logger.info('Health Requested')
+    return health_check()
+
+#Metrics
+@app.route('/metrics')
+def metrics_endpoint():
+    logger.info('Metrics')
+    return metrics()
 
 # start the application on port 3111
 if __name__ == "__main__":
